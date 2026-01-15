@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>R-AISS | Scout Console</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono:wght@500&display=swap"
+        rel="stylesheet">
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-panel: #1e293b;
+            --home-base: #dc2626;
+            --away-base: #2563eb;
+            --gold: #f59e0b;
+            --text: #ffffff;
+            --glass: rgba(15, 23, 42, 0.95);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text);
+            height: 100vh;
+            height: 100dvh;
+            /* Mobile viewport fix */
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- STAGE AREA (THE PITCH) --- */
+        .stage-area {
+            flex: 0 0 40%;
+            /* Increased visibility for the pitch */
+            display: flex;
+            background: #111827;
+            position: relative;
+            overflow: hidden;
+            z-index: 10;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .timer-overlay {
+            position: absolute;
+            top: 15px;
+            background: rgba(15, 23, 42, 0.8);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--gold);
+            font-family: 'JetBrains Mono', monospace;
+            z-index: 20;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .pitch-wrapper {
+            width: 95%;
+            height: 90%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.5));
+        }
+
+        /* --- CONTROLLER --- */
+        .controller-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-panel);
+            padding: 8px;
+            gap: 8px;
+            z-index: 20;
+            overflow: hidden;
+            border-top: 1px solid #334155;
+        }
+
+        .dashboard-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 5px 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            height: 35px;
+            flex-shrink: 0;
+        }
+
+        #currentSelection {
+            color: var(--gold);
+            font-weight: bold;
+        }
+
+        #lastEventDisplay {
+            opacity: 0.8;
+            max-width: 50%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .team-switch-container {
+            display: flex;
+            height: 40px;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .team-btn {
+            flex: 1;
+            border: none;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 1rem;
+            text-transform: uppercase;
+            opacity: 0.4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .team-btn.home-mode.active {
+            opacity: 1;
+            background: var(--home-base);
+            color: white;
+            box-shadow: 0 0 15px rgba(220, 38, 38, 0.4);
+        }
+
+        .team-btn.home-mode {
+            border-color: var(--home-base);
+            color: var(--home-base);
+        }
+
+        .team-btn.away-mode.active {
+            opacity: 1;
+            background: var(--away-base);
+            color: white;
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+        }
+
+        .team-btn.away-mode {
+            border-color: var(--away-base);
+            color: var(--away-base);
+        }
+
+        .control-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 2fr 3fr;
+            gap: 8px;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        /* PLAYERS & ACTIONS */
+        .player-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .p-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #ccc;
+            transition: all 0.1s;
+        }
+
+        .p-btn:active {
+            transform: scale(0.95);
+        }
+
+        .p-btn.home-theme.selected {
+            background: var(--home-base);
+            color: white;
+            border-color: white;
+        }
+
+        .p-btn.away-theme.selected {
+            background: var(--away-base);
+            color: white;
+            border-color: white;
+        }
+
+        .action-pad {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            gap: 6px;
+        }
+
+        .a-btn {
+            background: #334155;
+            color: var(--text);
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s;
+        }
+
+        .a-btn:active {
+            transform: scale(0.95);
+        }
+
+        .a-btn span {
+            font-size: 0.6rem;
+            opacity: 0.6;
+            margin-top: 2px;
+        }
+
+        .a-btn.selected {
+            background: white;
+            color: black;
+        }
+
+        .a-btn.attack {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #6ee7b7;
+        }
+
+        .a-btn.attack.selected {
+            background: #10b981;
+            color: black;
+            border-color: white;
+        }
+
+        .a-btn.defend {
+            background: rgba(244, 63, 94, 0.1);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: #fda4af;
+        }
+
+        .a-btn.defend.selected {
+            background: #f43f5e;
+            color: white;
+            border-color: white;
+        }
+
+        .a-btn.setpiece {
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid rgba(139, 92, 246, 0.4);
+            color: #c4b5fd;
+            grid-column: span 2;
+        }
+
+        .a-btn.setpiece.selected {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .footer-controls {
+            min-height: 40px;
+            height: auto;
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .ctrl-btn {
+            flex: 1;
+            background: #000;
+            border: 1px solid #333;
+            color: #999;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            height: 40px;
+            font-weight: bold;
+        }
+
+        .ctrl-btn.play {
+            background: #eab308;
+            color: black;
+            border: none;
+        }
+
+        .ctrl-btn.play.active {
+            background: #ef4444;
+            color: white;
+        }
+
+        .ctrl-btn.export {
+            background: #059669;
+            color: white;
+            border: none;
+        }
+
+        /* --- MODALS & SLIDE-OVERS --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .outcome-btn {
+            width: 80%;
+            padding: 18px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 12px;
+            border: none;
+            color: white;
+        }
+
+        .outcome-btn:active {
+            transform: scale(0.95);
+        }
+
+        .modal-title {
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .btn-cancel {
+            background: #333;
+            margin-top: 20px;
+        }
+
+        /* MATCH SETUP MODAL */
+        #matchSetupModal {
+            display: flex;
+            z-index: 200;
+            background: var(--bg-dark);
+        }
+
+        .setup-card {
+            background: var(--bg-panel);
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border: 1px solid #334155;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .input-group input {
+            padding: 12px;
+            background: var(--bg-dark);
+            border: 1px solid #334155;
+            color: white;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .btn-start {
+            background: #2563eb;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        /* SETTINGS SLIDE-OVER */
+        #settingsPanel {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            height: 100dvh;
+            /* Mobile viewport fix */
+            background: var(--bg-dark);
+            z-index: 150;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #settingsPanel.open {
+            right: 0;
+        }
+
+        .settings-header {
+            padding: 20px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-panel);
+            flex-shrink: 0;
+        }
+
+        .settings-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .input-group input {
+            padding: 12px;
+            background: var(--bg-dark);
+            border: 1px solid #334155;
+            color: white;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .btn-start {
+            background: #2563eb;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        /* SETTINGS SLIDE-OVER */
+        #settingsPanel {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            height: 100dvh;
+            /* Mobile viewport fix */
+            background: var(--bg-dark);
+            z-index: 150;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #settingsPanel.open {
+            right: 0;
+        }
+
+        .settings-header {
+            padding: 20px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-panel);
+            flex-shrink: 0;
+        }
+
+        .settings-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
+            /* Safe area for scrolling */
+        }
+
+        .filter-section {
+            border: 1px solid #334155;
+            padding: 15px;
+            border-radius: 8px;
+            background: var(--bg-panel);
+        }
+
+        .filter-title {
+            color: var(--gold);
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .db-status {
+            font-size: 0.8rem;
+            color: #10b981;
+            margin-top: 5px;
+        }
+
+        /* TABLET LAYOUT */
+        @media (min-width: 768px) {
+            body {
+                flex-direction: row;
+            }
+
+            .stage-area {
+                flex: 0 0 65%;
+                height: 100vh;
+                border-right: 1px solid var(--border);
+            }
+
+            .controller-area {
+                flex: 0 0 35%;
+                height: 100vh;
+                padding: 15px;
+            }
+
+            .control-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .player-pad {
+                height: 40%;
+            }
+
+            .action-pad {
+                height: 60%;
+            }
+
+            .p-btn,
+            .a-btn {
+                font-size: 1.2rem;
+            }
+
+            #settingsPanel {
+                width: 400px;
+                border-left: 1px solid #334155;
+            }
+    </style>
+</head>
+
+<body>
+
+    <div class="modal-overlay" id="matchSetupModal">
+        <div class="setup-card">
+            <h2 style="color:white; text-align:center;">NEW MATCH SETUP</h2>
+            <div class="input-group">
+                <label>Date</label>
+                <input type="date" id="setupDate">
+            </div>
+            <div class="input-group">
+                <label>Home Team</label>
+                <input type="text" id="setupHome" placeholder="e.g. Arsenal">
+            </div>
+            <div class="input-group">
+                <label>Away Team</label>
+                <input type="text" id="setupAway" placeholder="e.g. Chelsea">
+            </div>
+            <button class="btn-start" onclick="startMatch()">START SESSION</button>
+        </div>
+    </div>
+
+    <div id="settingsPanel">
+        <div class="settings-header">
+            <h3>DATA & EXPORT</h3>
+            <button onclick="toggleSettings()"
+                style="background:none; border:none; color:white; font-size:1.5rem;">&times;</button>
+        </div>
+        <div class="settings-content">
+            <div class="filter-section">
+                <div class="filter-title">Firebase Status</div>
+                <div id="firebaseStatus" style="color:#64748b">Connecting...</div>
+                <div id="matchIdDisplay" style="font-family:monospace; margin-top:5px; font-size:0.8rem;"></div>
+            </div>
+
+            <div class="filter-section">
+                <div class="filter-title">Export Filters</div>
+                <div class="input-group">
+                    <label>Filter Team</label>
+                    <select id="filterTeam"
+                        style="padding:10px; background:#0f172a; color:white; border:1px solid #334155; border-radius:4px;">
+                        <option value="All">All Teams</option>
+                        <option value="Home">Home Only</option>
+                        <option value="Away">Away Only</option>
+                    </select>
+                </div>
+                <div class="input-group" style="margin-top:10px;">
+                    <label>Filter Player (e.g. H7)</label>
+                    <input type="text" id="filterPlayer" placeholder="Leave empty for all">
+                </div>
+                <div class="input-group" style="margin-top:10px;">
+                    <label>Filter Action</label>
+                    <input type="text" id="filterAction" placeholder="e.g. Shot (Leave empty for all)">
+                </div>
+            </div>
+
+            <button class="btn-start" style="background:#059669" onclick="runExport()">DOWNLOAD CSV</button>
+            <div style="font-size:0.8rem; color:#64748b; text-align:center;">Exports filtered data from current session
+            </div>
+        </div>
+    </div>
+
+    <div class="stage-area">
+        <!-- TOP BAR: Period & Timer -->
+        <div
+            style="position:absolute; top:10px; width:100%; display:flex; justify-content:center; gap:15px; z-index:20;">
+            <div class="timer-overlay" id="matchTimerDisplay">00:00</div>
+            <button id="periodBtn" onclick="togglePeriod()"
+                style="background:rgba(15,23,42,0.9); color:white; border:1px solid #334155; padding:8px 16px; border-radius:20px; font-weight:bold; cursor:pointer;">
+                1ST HALF
+            </button>
+        </div>
+
+        <!-- DIRECTION INDICATORS -->
+        <div
+            style="position:absolute; top:60px; width:90%; display:flex; justify-content:space-between; pointer-events:none; z-index:15;">
+            <div id="homeDirIndicator"
+                style="color:var(--home-base); font-weight:900; font-size:1.5rem; text-shadow:0 2px 4px black;">
+                HOME &rarr;
+            </div>
+            <div id="awayDirIndicator"
+                style="color:var(--away-base); font-weight:900; font-size:1.5rem; text-shadow:0 2px 4px black;">
+                &larr; AWAY
+            </div>
+        </div>
+
+        <div class="pitch-wrapper">
+            <canvas id="pitchCanvas"></canvas>
+        </div>
+    </div>
+
+    <div class="controller-area">
+        <div class="team-switch-container">
+            <button class="team-btn home-mode active" onclick="setTeam('Home')">HOME</button>
+            <button class="team-btn away-mode" onclick="setTeam('Away')">AWAY</button>
+        </div>
+
+        <div class="dashboard-bar">
+            <div id="currentSelection" style="color:var(--gold); font-weight:bold;">Select Player...</div>
+            <div id="lastEventDisplay" style="color:#94a3b8;">History: None</div>
+        </div>
+
+        <div class="control-grid">
+            <div class="player-pad" id="playerPad"></div>
+            <div class="action-pad">
+                <button class="a-btn attack" data-action="Pass" onclick="selectAction('Pass')">Pass
+                    <span>P</span></button>
+                <button class="a-btn attack" data-action="Dribble" onclick="selectAction('Dribble')">Dribble
+                    <span>D</span></button>
+                <button class="a-btn attack" data-action="Cross" onclick="selectAction('Cross')">Cross
+                    <span>C</span></button>
+                <button class="a-btn attack" data-action="Shot" onclick="selectAction('Shot')">Shot
+                    <span>S</span></button>
+                <button class="a-btn setpiece" data-action="Setpiece" onclick="selectAction('Setpiece')">SET PIECE
+                    <span>K</span></button>
+                <button class="a-btn defend" data-action="Tackle" onclick="selectAction('Tackle')">Tackle
+                    <span>T</span></button>
+                <button class="a-btn defend" data-action="Interception" onclick="selectAction('Interception')">Intcpt
+                    <span>I</span></button>
+                <button class="a-btn defend" data-action="Ball Recovery" onclick="selectAction('Ball Recovery')">Recov
+                    <span>R</span></button>
+                <button class="a-btn defend" data-action="Clearance" onclick="selectAction('Clearance')">Clear
+                    <span>L</span></button>
+                <button class="a-btn defend" data-action="Foul" onclick="selectAction('Foul')">Foul
+                    <span>F</span></button>
+            </div>
+        </div>
+
+        <div class="footer-controls">
+            <button class="ctrl-btn" onclick="undoLast()">UNDO</button>
+            <button class="ctrl-btn play" id="playBtn" onclick="togglePlay()">START CLOCK</button>
+            <button class="ctrl-btn export" onclick="toggleSettings()">SETTINGS / EXPORT</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="shotModal">
+        <div class="modal-title">Shot Outcome</div>
+        <button class="outcome-btn" style="background:var(--gold); color:black;"
+            onclick="finalizeShot('Goal')">GOAL</button>
+        <button class="outcome-btn" style="background:#3b82f6" onclick="finalizeShot('Saved')">SAVED</button>
+        <button class="outcome-btn" style="background:#ef4444" onclick="finalizeShot('Off Target')">OFF TARGET</button>
+        <button class="outcome-btn" style="background:#64748b" onclick="finalizeShot('Blocked')">BLOCKED</button>
+        <button class="outcome-btn btn-cancel" onclick="closeModals()">CANCEL</button>
+    </div>
+
+    <div class="modal-overlay" id="setpieceModal">
+        <div class="modal-title">Select Set Piece</div>
+        <button class="outcome-btn" style="background:#8b5cf6" onclick="finalizeSetpiece('Corner Kick')">CORNER
+            KICK</button>
+        <button class="outcome-btn" style="background:#ec4899" onclick="finalizeSetpiece('Free Kick')">FREE
+            KICK</button>
+        <button class="outcome-btn" style="background:#14b8a6" onclick="finalizeSetpiece('Goal Kick')">GOAL
+            KICK</button>
+        <button class="outcome-btn" style="background:#f59e0b; color:black;"
+            onclick="finalizeSetpiece('Penalty')">PENALTY</button>
+        <button class="outcome-btn btn-cancel" onclick="closeModals()">CANCEL</button>
+    </div>
+
+    <script>
+        /**
+         * R-AISS Scout Console
+         * Jan 2026
+         * 
+         * A dynamic match event logging dashboard built for real-time scouting and analysis.
+         * 
+         * Key Features:
+         * - Event Digitization: Log technical actions (Pass, Shot, Tackle) with precise pitch coordinates.
+         * - Live Match Management: Track game time, periods, and team performance in real-time.
+         * - Data Portability: Instant export of match events to CSV for integration with analysis tools.
+         */
+        // Placeholder Configuration for Portfolio Display
+        const firebaseConfig = {
+            apiKey: "APIKEY",
+            authDomain: "sss",
+            projectId: "sss",
+            storageBucket: "sss",
+            messagingSenderId: "sss",
+            appId: "sss"
+        };
+
+        // Initialize Firebase
+        let db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            document.getElementById('firebaseStatus').innerText = "Connected ✅";
+            document.getElementById('firebaseStatus').style.color = "#10b981";
+        } catch (e) {
+            console.error("Firebase Error:", e);
+            document.getElementById('firebaseStatus').innerText = "Not Connected (Check Console)";
+            document.getElementById('firebaseStatus').style.color = "#ef4444";
+        }
+
+        // --- 2. GLOBAL STATE ---
+        let matchMetadata = { id: null, date: null, home: null, away: null };
+        let state = { team: 'Home', player: null, action: null, pendingLocation: null };
+        let events = [];
+        let pendingAction = null;
+
+        // Timer & Context State
+        let matchTimer = 0;
+        let timerInterval = null;
+        let isPaused = true;
+        let currentPeriod = 1; // 1 = 1st Half, 2 = 2nd Half
+        let homeAttackingRight = true; // Default: Home attacks Left->Right
+
+        // --- 3. INIT ---
+        window.onload = () => {
+            // Set default date to today
+            document.getElementById('setupDate').valueAsDate = new Date();
+
+            renderPlayerPad();
+            initPitch();
+            setupKeyboard();
+            updateDirectionUI();
+        };
+
+        // --- 4. MATCH SETUP LOGIC ---
+        function startMatch() {
+            const date = document.getElementById('setupDate').value;
+            const home = document.getElementById('setupHome').value || 'Home';
+            const away = document.getElementById('setupAway').value || 'Away';
+
+            // Create Match ID
+            matchMetadata.date = date;
+            matchMetadata.home = home;
+            matchMetadata.away = away;
+            matchMetadata.id = `match_${Date.now()}`; // Unique ID
+
+            // Update UI
+            document.querySelector('.team-btn.home-mode').innerText = home.substring(0, 8);
+            document.querySelector('.team-btn.away-mode').innerText = away.substring(0, 8);
+            document.getElementById('matchIdDisplay').innerText = `ID: ${matchMetadata.id}`;
+
+            // Hide Modal
+            document.getElementById('matchSetupModal').style.display = 'none';
+
+            // Push Metadata to Firebase
+            if (db) {
+                db.collection('matches').doc(matchMetadata.id).set({
+                    ...matchMetadata,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }).catch(err => console.warn("DB Meta Error", err));
+            }
+            updateDirectionUI();
+        }
+
+        // --- 5. PERIOD & DIRECTION LOGIC ---
+        function togglePeriod() {
+            const btn = document.getElementById('periodBtn');
+            if (currentPeriod === 1) {
+                currentPeriod = 2;
+                btn.innerText = "2ND HALF";
+                matchTimer = 45 * 60; // Jump to 45:00
+                // Auto-swap direction for 2nd half
+                homeAttackingRight = !homeAttackingRight;
+            } else {
+                currentPeriod = 1;
+                btn.innerText = "1ST HALF";
+                matchTimer = 0;
+                homeAttackingRight = !homeAttackingRight;
+            }
+            updateTimerDisplay();
+            updateDirectionUI();
+        }
+
+        function updateDirectionUI() {
+            const hInd = document.getElementById('homeDirIndicator');
+            const aInd = document.getElementById('awayDirIndicator');
+            const homeName = matchMetadata.home || 'HOME';
+            const awayName = matchMetadata.away || 'AWAY';
+
+            if (homeAttackingRight) {
+                // Home: L -> R, Away: R -> L
+                hInd.innerHTML = `${homeName} &rarr;`;
+                aInd.innerHTML = `&larr; ${awayName}`;
+            } else {
+                // Home: R -> L, Away: L -> R
+                hInd.innerHTML = `&larr; ${homeName}`;
+                aInd.innerHTML = `${awayName} &rarr;`;
+            }
+        }
+
+        // --- 6. CORE LOGIC (THE TRINITY CHECK) ---
+        function checkAndCommit() {
+            if (state.player && state.action && state.pendingLocation) {
+                handleEventTrigger(state.pendingLocation.x, state.pendingLocation.y, state.pendingLocation.time);
+                state.player = null;
+                state.action = null;
+                state.pendingLocation = null;
+                document.querySelectorAll('.a-btn').forEach(b => b.classList.remove('selected'));
+                document.querySelectorAll('.p-btn').forEach(b => b.classList.remove('selected'));
+                drawPitch();
+            }
+            updateDisplay();
+        }
+
+        function handleEventTrigger(x, y, time) {
+            pendingAction = { x, y, time: time };
+            if (state.action === 'Shot') document.getElementById('shotModal').style.display = 'flex';
+            else if (state.action === 'Setpiece') document.getElementById('setpieceModal').style.display = 'flex';
+            else saveEvent(x, y, state.action, '');
+        }
+
+        function saveEvent(x, y, eventName, qualifier) {
+            try {
+                // --- NORMALIZATION MAGIC ---
+                // We want to store data as if the team is ALWAYS attacking Left -> Right (0 -> 100)
+                // This makes heatmaps consistent regardless of half.
+
+                let normX = x;
+                let normY = y;
+
+                // Logic:
+                // If Home Team is acting AND Home is attacking Right-to-Left (homeAttackingRight == false), Flip.
+                // If Away Team is acting AND Away is attacking Right-to-Left (homeAttackingRight == true), Flip.
+
+                const isHome = state.team === 'Home';
+                const attackingRight = isHome ? homeAttackingRight : !homeAttackingRight;
+
+                if (!attackingRight) {
+                    // If attacking Left, flip X and Y to normalize to "Attacking Right" view
+                    normX = 100 - x;
+                    normY = 100 - y;
+                }
+
+                let prog = "";
+                let prev = events.length > 0 ? events[events.length - 1] : null;
+                // Use Normalized X for progression calc to be accurate across halves
+                if (prev && prev.Player === state.player && ['Dribble', 'Pass'].includes(eventName)) {
+                    let moved = normX - prev.NormX;
+                    if (moved > 10) prog = "Prog. Carry";
+                }
+
+                let finalTime = pendingAction ? pendingAction.time : matchTimer;
+
+                const newEvent = {
+                    matchId: matchMetadata.id,
+                    Period: currentPeriod,
+                    Team: state.team,
+                    Player: state.player,
+                    Event: eventName,
+                    Qualifier: qualifier,
+                    Prog: prog,
+                    Mins: Math.floor(finalTime / 60),
+                    Secs: Math.floor(finalTime % 60),
+                    // Store Raw (Screen) Coords for replay/debug
+                    ScreenX: x.toFixed(1),
+                    ScreenY: y.toFixed(1),
+                    // Store Normalized Coords for Analytics
+                    NormX: normX.toFixed(1),
+                    NormY: normY.toFixed(1),
+                    timestamp: Date.now()
+                };
+
+                // 1. Add to Memory
+                events.push(newEvent);
+
+                // 2. Add to Firebase (Cloud Persistence)
+                if (db && matchMetadata.id) {
+                    db.collection('matches').doc(matchMetadata.id).collection('events').add(newEvent).catch(e => console.warn("DB Write Fail", e));
+                }
+
+                // 3. Update UI
+                const histEl = document.getElementById('lastEventDisplay');
+                if (histEl) histEl.innerText = `Last: ${state.player} ${eventName}`;
+                state.pendingLocation = null;
+                updateDisplay();
+
+            } catch (err) {
+                console.warn("Save Error", err);
+            }
+        }
+
+        // --- 6. SETTINGS & EXPORT ---
+        function toggleSettings() {
+            document.getElementById('settingsPanel').classList.toggle('open');
+        }
+
+        function runExport() {
+            // Get Filters
+            const fTeam = document.getElementById('filterTeam').value;
+            const fPlayer = document.getElementById('filterPlayer').value.trim().toUpperCase();
+            const fAction = document.getElementById('filterAction').value.trim();
+
+            // Filter Data
+            const filtered = events.filter(e => {
+                if (fTeam !== 'All' && e.Team !== state.team) {
+                    if (e.Team !== fTeam) return false;
+                }
+                if (fPlayer && e.Player !== fPlayer) return false;
+                if (fAction && !e.Event.includes(fAction)) return false;
+                return true;
+            });
+
+            if (!filtered.length) return alert("No events match your filters.");
+
+            // CSV Gen
+            const headers = "MatchID,Period,Team,Player,Event,Qualifier,Prog_Metric,Mins,Secs,X,Y,ScreenX,ScreenY";
+            const rows = filtered.map(e => `${e.matchId},${e.Period},${e.Team},${e.Player},${e.Event},${e.Qualifier},${e.Prog},${e.Mins},${e.Secs},${e.NormX},${e.NormY},${e.ScreenX},${e.ScreenY}`).join('\n');
+
+            const blob = new Blob([headers + '\n' + rows], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${matchMetadata.home}_vs_${matchMetadata.away}_${matchMetadata.date}.csv`;
+            a.click();
+        }
+
+        // --- 7. HELPER FUNCTIONS ---
+        function setTeam(team) {
+            state.team = team;
+            state.player = null;
+            document.querySelector('.home-mode').classList.toggle('active', team === 'Home');
+            document.querySelector('.away-mode').classList.toggle('active', team === 'Away');
+            renderPlayerPad();
+            updateDisplay();
+        }
+
+        function renderPlayerPad() {
+            const pad = document.getElementById('playerPad');
+            pad.innerHTML = '';
+            for (let i = 1; i <= 11; i++) {
+                let btn = document.createElement('div');
+                btn.className = `p-btn ${state.team === 'Home' ? 'home-theme' : 'away-theme'}`;
+                btn.innerText = i;
+                btn.onclick = () => selectPlayer(i, btn);
+                pad.appendChild(btn);
+            }
+        }
+
+        function selectPlayer(num, btnEl) {
+            document.querySelectorAll('.p-btn').forEach(b => b.classList.remove('selected'));
+            btnEl.classList.add('selected');
+            let prefix = state.team === 'Home' ? 'H' : 'A';
+            state.player = prefix + num;
+            checkAndCommit();
+        }
+
+        function selectAction(action) {
+            document.querySelectorAll('.a-btn').forEach(b => b.classList.remove('selected'));
+            const targetBtn = document.querySelector(`.a-btn[data-action="${action}"]`);
+            if (targetBtn) targetBtn.classList.add('selected');
+            state.action = action;
+            checkAndCommit();
+        }
+
+        function updateDisplay() {
+            const el = document.getElementById('currentSelection');
+            if (el) {
+                let txt = "";
+                if (state.player) txt += `${state.player} `;
+                if (state.action) txt += `+ ${state.action} `;
+                if (state.pendingLocation) txt += `+ [Loc Set]`;
+                el.innerText = txt || "Select Player, Action, or Location...";
+            }
+        }
+
+        // Pitch Logic
+        let pitchImage = new Image();
+
+        function updatePitchSource() {
+            const width = window.innerWidth;
+            let newSrc = 'pitchsmall.jpg';
+            if (width >= 1024) newSrc = 'pitchlarge.jpg';
+            else if (width >= 768) newSrc = 'pitchmedium.jpg';
+
+            if (!pitchImage.src.includes(newSrc)) {
+                pitchImage.src = newSrc;
+            }
+        }
+        updatePitchSource();
+        window.addEventListener('resize', updatePitchSource);
+
+        function initPitch() {
+            const canvas = document.getElementById('pitchCanvas');
+            const parent = canvas.parentElement;
+
+            new ResizeObserver(() => {
+                canvas.width = parent.clientWidth;
+                canvas.height = parent.clientHeight;
+                drawPitch();
+            }).observe(parent);
+
+            pitchImage.onload = drawPitch;
+
+            const inputHandler = (e) => {
+                if (e.target.closest('button')) return;
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const x = ((clientX - rect.left) / rect.width) * 100;
+                const y = ((clientY - rect.top) / rect.height) * 100;
+
+                state.pendingLocation = { x: x, y: y, time: matchTimer };
+                drawPitch();
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'yellow';
+                ctx.beginPath();
+                ctx.arc((x / 100) * canvas.width, (y / 100) * canvas.height, 5, 0, Math.PI * 2);
+                ctx.fill();
+                checkAndCommit();
+            };
+
+            canvas.addEventListener('mousedown', inputHandler);
+            canvas.addEventListener('touchstart', inputHandler, { passive: false });
+        }
+
+        function drawPitch() {
+            const canvas = document.getElementById('pitchCanvas');
+            const ctx = canvas.getContext('2d');
+            if (pitchImage.complete && pitchImage.naturalWidth > 0) {
+                ctx.drawImage(pitchImage, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = '#1a2c2c';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        // Modals
+        function finalizeShot(outcome) {
+            document.getElementById('shotModal').style.display = 'none';
+            if (pendingAction) {
+                saveEvent(pendingAction.x, pendingAction.y, 'Shot', outcome);
+                pendingAction = null;
+            }
+        }
+
+        function finalizeSetpiece(type) {
+            document.getElementById('setpieceModal').style.display = 'none';
+            if (pendingAction) {
+                saveEvent(pendingAction.x, pendingAction.y, 'Setpiece', type);
+                pendingAction = null;
+            }
+        }
+
+        function closeModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+            pendingAction = null;
+        }
+
+        function undoLast() {
+            events.pop();
+            document.getElementById('lastEventDisplay').innerText = "Undo Performed";
+        }
+
+        function togglePlay() {
+            isPaused = !isPaused;
+            const btn = document.getElementById('playBtn');
+
+            if (!isPaused) {
+                btn.innerText = "STOP CLOCK";
+                btn.classList.add('active');
+                timerInterval = setInterval(() => {
+                    matchTimer++;
+                    updateTimerDisplay();
+                }, 1000);
+            } else {
+                btn.innerText = "RESUME CLOCK";
+                btn.classList.remove('active');
+                clearInterval(timerInterval);
+            }
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(matchTimer / 60).toString().padStart(2, '0');
+            const s = (matchTimer % 60).toString().padStart(2, '0');
+            document.getElementById('matchTimerDisplay').innerText = `${m}:${s}`;
+        }
+
+        function setupKeyboard() {
+            const keys = {
+                'p': 'Pass', 's': 'Shot', 'd': 'Dribble', 'c': 'Cross',
+                't': 'Tackle', 'i': 'Interception', 'r': 'Ball Recovery',
+                'l': 'Clearance', 'f': 'Foul', 'k': 'Setpiece'
+            };
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+                if (e.key === 'z') undoLast();
+                if (keys[e.key.toLowerCase()]) selectAction(keys[e.key.toLowerCase()]);
+            });
+        }
+    </script>
+</body>
+
+</html>
