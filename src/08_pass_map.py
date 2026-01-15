@@ -4,8 +4,8 @@ from mplsoccer import VerticalPitch
 from matplotlib.lines import Line2D
 
 # --- CONFIGURATION ---
-CSV_FILE = 'full_match_data.csv'
-OUTPUT_IMAGE = 'progressive_pass_lanes.png'
+CSV_FILE = 'data/full_match_data.csv'
+OUTPUT_IMAGE = 'output/progressive_pass_lanes.png'
 TEAM_NAME = 'Home'  # Change to 'Home' (Lincoln) or 'Away' (Easter)
 
 # 1. LOAD DATA

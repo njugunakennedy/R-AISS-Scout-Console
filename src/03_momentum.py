@@ -5,8 +5,8 @@ from matplotlib.offsetbox import AnnotationBbox, OffsetImage
 from scipy.ndimage import gaussian_filter1d
 
 # --- CONFIGURATION ---
-CSV_FILE = 'full_match_data.csv'   # Updated to match our data file
-OUTPUT_IMAGE = 'momentum_timeline.png'
+CSV_FILE = 'data/full_match_data.csv'   # Updated to match our data file
+OUTPUT_IMAGE = 'output/momentum_timeline.png'
 BALL_IMG = 'ball.png'  # Optional: Place a small png of a ball in the folder
 
 # 1. LOAD DATA

@@ -4,8 +4,8 @@ from mplsoccer import VerticalPitch
 from matplotlib.lines import Line2D
 
 # --- CONFIGURATION ---
-CSV_FILE = 'full_match_data.csv'  # Matches the generator output
-OUTPUT_IMAGE = 'carry_lanes_map.png'
+CSV_FILE = 'data/full_match_data.csv'  # Matches the generator output
+OUTPUT_IMAGE = 'output/carry_lanes_map.png'
 TEAM_NAME = 'Home'  # Change to 'Home' (Lincoln) or 'Away' (Easter)
 
 # 1. LOAD DATA

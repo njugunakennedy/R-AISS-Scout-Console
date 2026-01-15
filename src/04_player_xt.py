@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # --- CONFIGURATION ---
-CSV_FILE = 'full_match_data.csv'  # Linked to your generated data
-OUTPUT_IMAGE = 'xt_stacked_leaderboard.png'
+CSV_FILE = 'data/full_match_data.csv'  # Linked to your generated data
+OUTPUT_IMAGE = 'output/xt_stacked_leaderboard.png'
 TEAM_NAME = 'Home'  # Change to 'Away' to see the other team
 
 # 1. LOAD DATA

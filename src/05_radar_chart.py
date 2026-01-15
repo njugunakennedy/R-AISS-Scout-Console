@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 from mplsoccer import PyPizza
 
 # --- CONFIGURATION ---
-CSV_FILE = 'full_match_data.csv'  # Linked to the generator output
-OUTPUT_IMAGE = 'radar_chart_attack_defense.png'
+CSV_FILE = 'data/full_match_data.csv'  # Linked to the generator output
+OUTPUT_IMAGE = 'output/radar_chart_attack_defense.png'
 # Choose a player likely to have mixed actions (e.g., a midfielder like H6, H8, A6, A8)
 TARGET_PLAYER = 'H8'  
 

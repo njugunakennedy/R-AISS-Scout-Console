@@ -5,8 +5,8 @@ import matplotlib.colors as mcolors
 from mplsoccer import Pitch
 
 # --- CONFIGURATION ---
-CSV_FILE = 'full_match_data.csv' 
-OUTPUT_IMAGE = 'heatmap_lincoln_vs_eastern.png'
+CSV_FILE = 'data/full_match_data.csv' 
+OUTPUT_IMAGE = 'output/heatmap_lincoln_vs_eastern.png'
 TEAM_NAME = 'Home'  # Select which team's data to display
 
 # 1. LOAD DATA
