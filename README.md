@@ -1,6 +1,6 @@
 # ⚽ R-AISS-Scout-Console
 
-A comprehensive match analysis tool built with Python. This project generates synthetic match data (Opta-style event data) and visualizes it using industry-standard metrics like Expected Threat (xT), Momentum, and Progressive Actions.
+A comprehensive match analysis tool built with Python. This project help scouts generates match data (Opta-style event data) and visualizes it using industry-standard metrics like Expected Threat (xT), Momentum, and Progressive Actions.
 
 ## 📊 Visualizations Included
 1.  **Match Momentum (xT):** A timeseries chart showing attacking threat over time.
